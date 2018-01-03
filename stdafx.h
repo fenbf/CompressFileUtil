@@ -19,6 +19,9 @@
 #include <string>
 #include <optional>
 #include <iostream>
+#include <fstream>
+#include <map>
+#include <filesystem>
 
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>

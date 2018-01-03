@@ -4,14 +4,6 @@
 #include "stdafx.h"
 #include "FileCompressor.h"
 
-
-// https://www.codeproject.com/Articles/256158/Learning-Poco-Zip-files
-// https://theboostcpplibraries.com/boost.program_options
-
-// https://justcheckingonall.wordpress.com/2008/01/21/bzip2-gotta-love-it/
-
-// tar before bz2? https://www.codeproject.com/Articles/1585/CFileTar-pack-and-unpack-file-archives
-
 using namespace boost::program_options;
 
 struct InputParams
@@ -26,8 +18,8 @@ options_description PrepareOptionDescription() noexcept
 	options_description desc{ "Options" };
 	desc.add_options()
 		("help,h", "Help screen")
-		("out,o", value<std::string>()->default_value("out.zip"))
-		("files,f", value<std::vector<std::string>>()->multitoken(), "File to add");
+		("out,o", value<std::string>()->default_value("out.zip"), "Output file name, extension selects the compression method")
+		("files,f", value<std::vector<std::string>>()->multitoken(), "Files (or directories) to add");
 
 	return desc;
 }
@@ -69,8 +61,8 @@ void RunCompressor(const InputParams& params) noexcept
 {
 	try
 	{
-		FileCompressor compressor{ params.m_output, params.m_files };
-		compressor.Compress();
+		FileCompressor compressor;
+		compressor.Compress(params.m_files, params.m_output);
 	}
 	catch (const std::exception& ex)
 	{

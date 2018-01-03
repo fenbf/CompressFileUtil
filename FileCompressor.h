@@ -4,7 +4,7 @@
 class FileCompressor
 {
 public:
-	explicit FileCompressor(const std::string& strOuputFile, const StringVector& files);
+	explicit FileCompressor();
 	~FileCompressor();
 
 	// movable:
@@ -15,7 +15,9 @@ public:
 	FileCompressor(const FileCompressor& fc);
 	FileCompressor& operator=(const FileCompressor& fc);
 
-	void Compress();
+	void Compress(const StringVector& vecFileNames, const std::string& outputFileName);
+	
+	void ShowAvailableCompressionMethods(std::ostream& os);
 
 private:
 	class CompressorImpl;
