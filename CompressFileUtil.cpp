@@ -55,6 +55,9 @@ std::optional<InputParams> ParseCommandLine(int argc, char* argv[], const option
 void ShowHelp(const options_description& desc) noexcept
 {
 	std::cout << desc << '\n';
+
+	std::cout << "\nAvailable compression methods/extensions:\n";
+	FileCompressor::ShowAvailableCompressionMethods(std::cout);
 }
 
 void RunCompressor(const InputParams& params) noexcept
@@ -63,6 +66,7 @@ void RunCompressor(const InputParams& params) noexcept
 	{
 		FileCompressor compressor;
 		compressor.Compress(params.m_files, params.m_output);
+		compressor.ShowStatsAfterCompression(std::cout);
 	}
 	catch (const std::exception& ex)
 	{

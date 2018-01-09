@@ -14,18 +14,20 @@ public:
 	CompressorImpl() { }
 
 	void Compress(const StringVector& vecFileNames, const std::string& outputFileName);
+	void ShowStatsAfterCompression(std::ostream& os) const;
 
-	void ShowAvailableCompressionMethods(std::ostream& os);
+	static void ShowAvailableCompressionMethods(std::ostream& os);
 
 private:
-	using TCreateMethod = std::unique_ptr<ICompressionMethod>(*)();
-	static const std::map<std::string, TCreateMethod> s_CompressionMethods;
+	DataStats m_stats;
+
+private:
+	static const std::map<std::string, std::string> s_CompressionMethods;
 };
 
-const std::map<std::string, FileCompressor::CompressorImpl::TCreateMethod> FileCompressor::CompressorImpl::s_CompressionMethods = {
-	{ ".zip", ZipCompression::CreateMethod },
-	{ ".bz", BZCompression::CreateMethod },
-	{ ".bz2", BZCompression::CreateMethod }
+const std::map<std::string, std::string> FileCompressor::CompressorImpl::s_CompressionMethods = {
+	{ ".zip", ZipCompression::GetFactoryName() },
+	{ ".bz2", BZCompression::GetFactoryName() }
 };
 
 void FileCompressor::CompressorImpl::Compress(const StringVector& vecFileNames, const std::string& outputFileName)
@@ -35,17 +37,26 @@ void FileCompressor::CompressorImpl::Compress(const StringVector& vecFileNames, 
 	
 	if (auto it = s_CompressionMethods.find(strExtension); it != s_CompressionMethods.end())
 	{
-		auto CreateCompressionMethod = it->second;
-		auto pCompression = CreateCompressionMethod();
-		pCompression->Compress(vecFileNames, outputFileName);
+		auto pCompression = CompressionMethodFactory::Create(it->second);
+		m_stats = pCompression->Compress(vecFileNames, outputFileName);
 	}
 	else
 		throw std::runtime_error(std::string("Unsupported compression method, the extension \"") + strExtension + std::string("\" is not recognized"));
 }
 
+void FileCompressor::CompressorImpl::ShowStatsAfterCompression(std::ostream& os) const
+{
+	os << "Stats:\n";
+	os << "Bytes Read: " << m_stats.m_bytesProcessed << "\n";
+	os << "Bytes Saved: " << m_stats.m_BytesSaved << "\n";
+}
+
 void FileCompressor::CompressorImpl::ShowAvailableCompressionMethods(std::ostream& os)
 {
-
+	for (auto&[key, value] : s_CompressionMethods)
+	{
+		os << key << "\n";
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -74,10 +85,15 @@ FileCompressor& FileCompressor::operator=(const FileCompressor& fc) {
 
 void FileCompressor::Compress(const StringVector& vecFileNames, const std::string& outputFileName)
 {
-	m_pImpl->Compress(vecFileNames, outputFileName);
+	Pimpl()->Compress(vecFileNames, outputFileName);
+}
+
+void FileCompressor::ShowStatsAfterCompression(std::ostream& os) const
+{
+	Pimpl()->ShowStatsAfterCompression(os);
 }
 
 void FileCompressor::ShowAvailableCompressionMethods(std::ostream& os)
 {
-	m_pImpl->ShowAvailableCompressionMethods(os);
+	CompressorImpl::ShowAvailableCompressionMethods(os);
 }

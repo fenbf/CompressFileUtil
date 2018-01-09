@@ -10,11 +10,40 @@
 
 #include "Utils.h"
 
-void ZipCompression::Compress(const StringVector& vecFileNames, const std::string& outputFileName)
+/////////////////////////////////////////////////////////////////////////////////////////
+// CompressionMethodFactory
+
+std::map<std::string, CompressionMethodInfo> CompressionMethodFactory::s_methods;
+
+bool CompressionMethodFactory::Register(const std::string name, const CompressionMethodInfo& info)
+{
+	if (auto it = s_methods.find(name); it == s_methods.end())
+	{
+		s_methods[name] = info;
+		return true;
+	}
+	return false;
+}
+
+std::unique_ptr<ICompressionMethod> CompressionMethodFactory::Create(const std::string& name)
+{
+	if (auto it = s_methods.find(name); it != s_methods.end())
+		return it->second.m_CreateFunc();
+
+	return nullptr;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// ZipCompression
+
+bool ZipCompression::s_registered = CompressionMethodFactory::Register(ZipCompression::GetFactoryName(), { ZipCompression::CreateMethod, "Zip compression using deflate approach" });
+
+DataStats ZipCompression::Compress(const StringVector& vecFileNames, const std::string& outputFileName)
 {
 	std::ofstream out(outputFileName, std::ios::binary);
 	Poco::Zip::Compress compressor(out, /*seekable output*/true);
 	compressor.setZipComment(m_zipComment);
+	DataStats stats;
 
 	const auto CompressionLevel = m_bStoreFilesOnly ? Poco::Zip::ZipCommon::CL_SUPERFAST : Poco::Zip::ZipCommon::CL_MAXIMUM;
 	const auto CompressionMode = m_bStoreFilesOnly ? Poco::Zip::ZipCommon::CM_STORE : Poco::Zip::ZipCommon::CM_DEFLATE;
@@ -34,17 +63,29 @@ void ZipCompression::Compress(const StringVector& vecFileNames, const std::strin
 			{
 				std::cout << "Adding file " << f.path() << std::endl;
 				compressor.addFile(p, p.getFileName(), CompressionMode, CompressionLevel);
+				stats.m_bytesProcessed += f.getSize();
 			}
 		}
 		else
 			throw std::runtime_error(std::string("File: ") + fileName + std::string(" doesn't exist!"));
 	}
 	compressor.close();
+
+	Poco::File f(outputFileName);
+	stats.m_BytesSaved = f.getSize();
+
+	return stats;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// BZCompression
+
+bool BZCompression::s_registered = CompressionMethodFactory::Register(BZCompression::GetFactoryName(), { BZCompression::CreateMethod, "BZ2 compression, several files are first packed with zip" });
+
 
 // based on 
 // https://justcheckingonall.wordpress.com/2008/01/21/bzip2-gotta-love-it/
-void BZCompression::PackFile(const std::string& inputFileName, const std::string& outputFileName)
+DataStats BZCompression::PackFile(const std::string& inputFileName, const std::string& outputFileName)
 {
 	auto inputFile = make_fopen(inputFileName.c_str(), "rb");
 	auto outputFile = make_fopen(outputFileName.c_str(), "wb");
@@ -71,17 +112,28 @@ void BZCompression::PackFile(const std::string& inputFileName, const std::string
 	unsigned int total_in{ 0 };	// bytes stored
 	unsigned int total_cmp{ 0 };  // bytes after compression
 	BZ2_bzWriteClose(&bz2error, out_bz2, 0, &total_in, &total_cmp);
+
+	return { total_in, total_cmp };
 }
 
-void BZCompression::Compress(const StringVector& vecFileNames, const std::string& outputFileName)
+DataStats BZCompression::Compress(const StringVector& vecFileNames, const std::string& outputFileName)
 {
-	ZipCompression TempMethod;
-	TempMethod.EnableStoreOnlyMode(true);
-	TempMethod.SetZipComment("Temporary zip with archived only files.");
+	if (vecFileNames.size() > 1)
+	{
+		ZipCompression TempMethod;
+		TempMethod.EnableStoreOnlyMode(true);
+		TempMethod.SetZipComment("Temporary zip with archived only files.");
 
-	Poco::TemporaryFile tmp; // will be automatically destroyed at the end...
+		Poco::TemporaryFile tmp; // will be automatically destroyed at the end...
 
-	TempMethod.Compress(vecFileNames, tmp.path());
+		TempMethod.Compress(vecFileNames, tmp.path());
 
-	PackFile(tmp.path().c_str(), outputFileName);
+		return PackFile(tmp.path().c_str(), outputFileName);
+	}
+
+
+	// one file only...
+	return PackFile(vecFileNames[0].c_str(), outputFileName);	
 }
+
+

@@ -16,11 +16,16 @@ public:
 	FileCompressor& operator=(const FileCompressor& fc);
 
 	void Compress(const StringVector& vecFileNames, const std::string& outputFileName);
-	
-	void ShowAvailableCompressionMethods(std::ostream& os);
+	void ShowStatsAfterCompression(std::ostream& os) const;
+
+	static void ShowAvailableCompressionMethods(std::ostream& os);
 
 private:
 	class CompressorImpl;
+
+	const CompressorImpl* Pimpl() const { return m_pImpl.get(); }
+	CompressorImpl* Pimpl() { return m_pImpl.get(); }
+
 	std::unique_ptr<CompressorImpl> m_pImpl;
 };
 
