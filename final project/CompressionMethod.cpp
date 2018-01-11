@@ -63,7 +63,7 @@ DataStats ZipCompression::Compress(const StringVector& vecFileNames, const std::
 			{
 				std::cout << "Adding file " << f.path() << std::endl;
 				compressor.addFile(p, p.getFileName(), CompressionMode, CompressionLevel);
-				stats.m_bytesProcessed += f.getSize();
+				stats.m_bytesProcessed += static_cast<size_t>(f.getSize());
 			}
 		}
 		else
@@ -72,7 +72,7 @@ DataStats ZipCompression::Compress(const StringVector& vecFileNames, const std::
 	compressor.close();
 
 	Poco::File f(outputFileName);
-	stats.m_BytesSaved = f.getSize();
+	stats.m_BytesSaved = static_cast<size_t>(f.getSize());
 
 	return stats;
 }

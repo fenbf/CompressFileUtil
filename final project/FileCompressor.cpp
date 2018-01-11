@@ -55,7 +55,7 @@ void FileCompressor::CompressorImpl::ShowAvailableCompressionMethods(std::ostrea
 {
 	for (auto&[key, value] : s_CompressionMethods)
 	{
-		os << key << "\n";
+		os << key << ", " << value << "\n";
 	}
 }
 
